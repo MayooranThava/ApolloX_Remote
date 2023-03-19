@@ -69,7 +69,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Define the bullet properties
         var name = "name"
         var src = "src"
-        var delay:Double = 0.6
+        var delay:Double = 0.7
     }
     
     var standardBullet = Bullet(name: "playerBullet", src: "bullet", delay: 0.6)
