@@ -14,6 +14,10 @@ var gameScore = 0
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
     
+    override func update(_ currentTime: TimeInterval) {
+            /* Called before each frame is rendered */
+        }
+    
     let scoreLabel = SKLabelNode(fontNamed: "The Bold Font")
     var powerlives = 3
     var livesNumber = 3
@@ -36,6 +40,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         case inGame // game state is in game
         case afterGame // game state is outro
     }
+    var currnetGameState = gameState.preGame
     var currentGameState = gameState.inGame
     /*
     
@@ -69,14 +74,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Define the bullet properties
         var name = "name"
         var src = "src"
-        var delay:Double = 0.7
+        var delay:Double = 0.45
+        var counter: Int = 0
     }
+    var standardBullet = Bullet(name: "playerBullet", src: "bullet", delay: 0.45)
     
-    var standardBullet = Bullet(name: "playerBullet", src: "bullet", delay: 0.6)
+    struct PowerUp {
+        var name = "name"
+        var src = "src"
+    }
+    var hitPowerUp = PowerUp(name: "starPower", src: "star_power")
     
     
     func random() -> CGFloat {
-        return CGFloat(Float(arc4random()) / 0xFFFFFFF5)
+        return CGFloat(Float(arc4random()) / 0xFFFFFFFF)
     }
     func random(min: CGFloat, max: CGFloat) -> CGFloat {
         return random() * (max - min) + min
@@ -125,8 +136,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.zPosition = 100
         self.addChild(scoreLabel)
         
-        
-        
+
         livesLabel.text = "Lives: 3"
         livesLabel.fontSize = 70
         livesLabel.fontColor = SKColor.white
@@ -225,11 +235,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     
+    
+    
     func didBegin(_ contact: SKPhysicsContact) {
 
         var body1 = SKPhysicsBody()
         var body2 = SKPhysicsBody()
-        var destroyPower = 3
+        
         
         if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask{
             body1 = contact.bodyA
@@ -244,7 +256,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // If player has hit the enemy
             
             if body1.node != nil {
-            spawnExplosion(spawnPosition: body1.node!.position)
+            spawnExplosion(spawnPosition: body1.node!.position, image: "explosion")
             }
 
             //if body2.node != nil {
@@ -260,10 +272,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if body1.categoryBitMask == PhysicsCategories.Bullet && body2.categoryBitMask == PhysicsCategories.Enemy && (body2.node?.position.y)! < self.size.height {
             // If the bullet has hit the enemy
             if body1.node != nil {
-            spawnExplosion(spawnPosition: body1.node!.position)
+            spawnExplosion(spawnPosition: body1.node!.position, image: "explosion")
             }
             else {
-                spawnExplosion(spawnPosition: body2.node!.position)
+                spawnExplosion(spawnPosition: body2.node!.position, image: "explosion")
             }
             
             addScore()
@@ -274,15 +286,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if body1.categoryBitMask == PhysicsCategories.Bullet && body2.categoryBitMask == PhysicsCategories.PowerUp && (body2.node?.position.y)! < self.size.height {
             
             // If the bullet has hit the powerUp
-            powerUpNow()
+            if body1.node != nil {
+            spawnExplosion(spawnPosition: body1.node!.position, image: "mini_explosion")
+            }
+            else {
+                spawnExplosion(spawnPosition: body2.node!.position, image: "mini_explosion")
+            }
+            
             powerlives -= 1
+            setSpawn(levelDuration: 1.5)
+            
             if (powerlives == 0) {
                 if body1.node != nil {
-                    spawnExplosion(spawnPosition: body1.node!.position)
+                    spawnExplosion(spawnPosition: body1.node!.position, image: "explosion")
                 }
                 standardBullet.src = "powerbullet"
                 standardBullet.delay = 0.2
-                setSpawn(levelDuration: startNewLevel())
+                standardBullet.counter = 20
+                setSpawn(levelDuration: 1.5)
                 powerUpNow()
                 body1.node?.removeFromParent()
                 body2.node?.removeFromParent()
@@ -291,8 +312,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
-    func spawnExplosion(spawnPosition: CGPoint) {
-        let explosion = SKSpriteNode(imageNamed: "explosion")
+    func spawnExplosion(spawnPosition: CGPoint, image: String) {
+        let explosion = SKSpriteNode(imageNamed: image)
         explosion.position = spawnPosition
         explosion.zPosition = 3
         explosion.setScale(0)
@@ -304,6 +325,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         let explosionSequence = SKAction.sequence([scaleIn, fadeOut, delete])
         explosion.run(explosionSequence)
+    }
+    func spawnMiniExplosion(spawnPosition: CGPoint) {
+        
     }
     func startNewLevel() -> Double {
         levelNumber += 1
@@ -359,6 +383,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     
     func fireBullet() {
+        if (standardBullet.counter > 0) {
+            standardBullet.counter -= 1
+            if (standardBullet.counter == 0) {
+                standardBullet.src = "bullet"
+                standardBullet.delay = 0.45
+                setSpawn(levelDuration: 1.5)
+            }
+        }
         let bullet = SKSpriteNode(imageNamed: standardBullet.src)
         bullet.name = "Bullet"
         bullet.setScale(1)
@@ -388,7 +420,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let startPoint = CGPoint(x: randomXStart, y: self.size.height * 1.2)
         let endPoint = CGPoint(x: randomXEnd, y: -self.size.height * 0.1)
         
-        let powerUp = SKSpriteNode (imageNamed: "star_power")
+        var powerUp = SKSpriteNode (imageNamed: hitPowerUp.src)
         powerUp.name = "Star"
         powerUp.setScale(0.15)
         powerUp.position = startPoint
@@ -399,9 +431,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         powerUp.physicsBody!.collisionBitMask = PhysicsCategories.None
         powerUp.physicsBody!.contactTestBitMask = PhysicsCategories.Player | PhysicsCategories.Bullet
         
+       
         self.addChild(powerUp)
         
-        let movepowerUp = SKAction.move(to: endPoint, duration: 6)
+        
+        let movepowerUp = SKAction.move(to: endPoint, duration: 8)
         let deletepowerUp = SKAction.removeFromParent()
        
         let powerSequence = SKAction.sequence([movepowerUp, deletepowerUp, deletepowerUp])
@@ -413,8 +447,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func spawnEnemy() {
-        let randomXStart = random(min: gameArea.minX, max: gameArea.maxX)
-        let randomXEnd = random(min: gameArea.minX, max: gameArea.maxX)
+        let randomXStart = random(min: (gameArea.minX + gameArea.minX*0.2), max: (gameArea.maxX - gameArea.maxX*0.2))
+        let randomXEnd = random(min: (gameArea.minX + gameArea.minX*0.2), max: (gameArea.maxX - gameArea.maxX*0.2))
         
         let startPoint = CGPoint(x: randomXStart, y: self.size.height * 1.2)
         let endPoint = CGPoint(x: randomXEnd, y: -self.size.height * 0.2)
